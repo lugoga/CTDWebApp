@@ -1,0 +1,14 @@
+name: OceanWebApp
+title: OceanWebApp
+username:
+account: semba
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6469938
+bundleId: 6005810
+url: https://semba.shinyapps.io/OceanWebApp/
+when: 1655196733.78654
+lastSyncTime: 1655196733.78654
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: roughPaper.Rmd

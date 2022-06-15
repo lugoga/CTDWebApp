@@ -1,0 +1,867 @@
+---
+title: "Untitled"
+author: "Masumbuko Semba"
+date: '2022-06-07'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data <- read.csv(text="event,start,end
+                       Phase 1,2020-12-15,2020-12-24
+                       Phase 2,2020-12-23,2020-12-29
+                       Phase 3,2020-12-28,2021-01-06
+                       Phase 4,2021-01-06,2021-02-02")
+        
+hc_vistime(data, optimize_y = FALSE)
+```
+
+
+```{r}
+
+sapphire = tibble(event = c("NE season", "SE season", "Inter"),
+                  start = c("2020-02-05", "2020-07-15", "2020-04-05"),
+                  end = c("2020-03-15","2020-08-24", "2020-05-20")) %>% 
+  arrange(start)
+
+sapphire %>%
+  vistime::hc_vistime(optimize_y = FALSE)
+
+```
+```{r}
+
+sapphire1 = tibble(content = c("NE season", "SE season", "Inter"),
+                  start = c("2020-02-05", "2020-07-15", "2020-04-05"),
+                  end = c("2020-03-15","2020-08-24", "2020-05-20")) %>% 
+  arrange(start)
+
+timevis::timevis(sapphire1)
+```
+
+
+```{r}
+ctd %>% 
+  filter(time > "2017-08-31") %>% 
+  group_by(program) %>% 
+  summarise(start = min(time), end = max(time)) %>% 
+  ungroup() %>% 
+  rename(event = program) %>% 
+  vistime::hc_vistime(optimize_y = TRUE)
+  timevis::timevis()
+```
+
+```{r}
+
+
+ctd %>% 
+  # mutate(month = lubridate::month(time), season = if_else(month %in% c(6:9), "SE", "NE")) %>% 
+  group_by(program, month) %>% distinct(lat, .keep_all = TRUE) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  hchart(type = "bar", hcaes(x = program, y = n, group = month)) %>% 
+  hc_xAxis(title = FALSE) %>% 
+  hc_yAxis(title = list(text = "CTD Casts")) %>% 
+  hc_colors(colors = hcl.colors(n = 10, palette = "reds"))
+
+
+```
+
+```{r}
+ctd %>% 
+  filter(year > 2019) %>% 
+  # mutate(month = lubridate::month(time), year = lubridate::year(time))
+  group_by(program, year, month) %>% 
+  summarise(start = min(time), end = max(time)) %>% 
+  ungroup() %>% 
+  mutate(duration = lubridate::interval(start = start, end = end) %>% lubridate::as.duration() %>% as.numeric('day'),
+         content = paste(program, year)) %>% 
+  # filter(program !=  "Algoa") %>% 
+  select(event = content, start, end)%>% 
+  # vistime::hc_vistime(optimize_y = FALSE)
+  timevis::timevis(fit = TRUE)
+```
+
+
+```{r}
+sap = read_csv("d:/semba/CTDs/OceanWebApp/data/ctd_dsfa_sapphire.csv")
+
+sap %>% 
+  mutate(project = if_else(project == "DPFA", "SAPPHIRE", project)) %>% 
+  distinct(lon, lat, month, .keep_all = TRUE) %>% 
+  group_by(month, project) %>% 
+  count()
+
+sap = sap %>%   
+  mutate(project = if_else(project == "DPFA", "SAPPHIRE", project)) %>% 
+  mutate(station = NA, year = lubridate::year(time), depth = NA) %>% 
+  select(program = project, station, lon,lat, time, month, year, pressure, depth, 
+         temperature, conductivity, fluorescence, oxygen, salinity )
+
+sap %>% 
+  # mutate(project = if_else(project == "DPFA", "SAPPHIRE", project)) %>% 
+  distinct(lon, lat, month, .keep_all = TRUE) %>% 
+  group_by(month, program) %>% 
+  count()
+
+```
+
+```{r}
+
+ctd = read_csv("d:/semba/CTDs/OceanWebApp/data/ctd_combined.csv")
+
+ctd = ctd %>% 
+  # distinct(program)
+  filter(!program %in% c("SAPPHIRE", "DSFA"))
+
+
+ctd.all = sap %>% select(-month) %>% 
+  bind_rows(ctd%>% select(-month)) %>% 
+  select(-c(station, depth)) %>% 
+  mutate(month = lubridate::month(time, abbr = FALSE, label = FALSE),
+         season = if_else(month %in% c(6:9), "SE", "NE")) %>% 
+  mutate(type = if_else(program %in% c("Algoa", "IIOE-2"), "Expeditions", "Locals"),
+         lat = if_else(lat >0,-1*lat,lat))
+
+
+```
+
+
+```{r}
+
+casts = ctd.all %>% 
+  distinct(program,lon,lat,time, .keep_all = TRUE) 
+
+casts.counts = casts %>% 
+  group_by(program, season, type) %>% 
+  count() %>% 
+  ungroup()
+
+
+casts.counts %>% 
+  arrange(desc(n)) %>% 
+  hchart(type = "bar", hcaes(x = program, y = n, group = season)) %>% 
+  hc_colors(colors = hcl.colors(n = 2, palette = "Berlin") %>% rev()) %>% 
+  hc_xAxis(title = FALSE) %>% 
+  hc_yAxis(title = list(text = "Number of Casts"))%>%
+  hc_legend(
+    align = "right",
+    verticalAlign = "top",
+    layout = "vertical",
+    x = 0,
+    y = 100
+  )%>%
+  hc_credits(
+    enabled = TRUE,
+    text = "htmlwidgets.org",
+    href = "http://www.htmlwidgets.org/"
+  ) %>%
+  hc_add_theme(hc_theme_smpl())
+
+```
+
+```{r}
+ casts %>% 
+  group_by(program, type) %>% 
+  count() %>% 
+  ungroup() %>% 
+  arrange(desc(n))
+
+```
+
+
+
+```{r}
+
+casts.sf = casts %>% 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326) 
+
+programs = casts.counts %>% distinct(program) %>% pull()
+
+
+tm_basemap(server = c("Open Street" = "OpenStreetMap")) +
+  tm_shape(shp = casts.sf%>% filter(program == programs[3]),name = programs[3]) +
+  tm_markers(clustering = TRUE)
+
+
+
+```
+
+
+
+## expeditions
+
+
+
+```{r}
+alg.selected = ctd.all %>% 
+    filter(program == "Algoa") %>% 
+    mutate(transect = case_when(lat > -6 ~ "North",
+                                between(lat, -8,-6) ~ "Middle",
+                                # lat > -8 & lat < -6 ~ "Middle",
+                                lat > -10 & lat < -8~ "South")) %>% 
+  pivot_longer(cols = temperature:salinity, names_to = "variable", values_to = "data")
+
+
+transects = c("North", "Middle", "South")
+varCtd = c("temperature", "oxygen", "fluorescence", "salinity","conductivity")
+
+j = 3
+i = 2
+make.contour = alg.selected %>% 
+  filter(transect==transects[j] &  variable == varCtd[i]) %>% 
+  pull(data) %>% 
+  quantile(na.rm = TRUE) %>% 
+  unique() %>% round(2)
+
+expd.selected = alg.selected %>% 
+  filter(transect==transects[j] &  variable == varCtd[i] & between(pressure,0,400)) %>% 
+  select(time,lon,lat, pressure, transect, variable, data) 
+
+```
+
+
+```{r}
+
+expd.selected %>% 
+      ggplot(aes(x = lon, y = pressure, z = data))+
+      metR::geom_contour_fill(bins = 120, kriging = FALSE)+
+      metR::geom_contour2(aes(label = stat(level)), breaks = make.contour, skip = 0)+
+      scale_y_reverse(expand = c(0,NA), name = "Pressure [m]") + 
+      scale_fill_gradientn(colours = oce::oce.colorsFreesurface(120), 
+                           trans = scales::boxcox_trans(p = 0.1),
+                           guide = guide_colorbar(title = expression(aa~(degree*C)), 
+                                                  title.position = "top", 
+                                                  label.position = "right",
+                                                  title.hjust = .5,
+                                                  title.theme = element_text(angle = 0), 
+                                                  barwidth = unit(.6, "cm"),
+                                                  barheight = unit(8, "cm")))+
+      metR::scale_x_longitude(breaks = scales::breaks_pretty(n = 3))+
+      theme_bw(base_size = 12) + 
+      theme(legend.position = "right")+
+  metR::scale_x_longitude(ticks = 0.2)
+
+
+```
+
+
+```{r}
+
+
+expd.selected %>% 
+  mutate(date = lubridate::as_date(time),
+         hour = lubridate::hour(time), 
+         across(is.numeric, round, 4)) %>% 
+  relocate(c(variable,date, hour, transect), .before = lon) %>% 
+  select(-time, -transect) %>% 
+  filter(pressure %in% seq(0,1000,20)) %>% 
+  DT::datatable(colnames = c("Variable","Date", "Hour", "Lon", "Lat","Pressure", "Data"), 
+                rownames = NA,
+                extensions = "Buttons", 
+                options = list(paging = TRUE,
+                           scrollX=TRUE, 
+                           searching = TRUE,
+                           ordering = TRUE,
+                           dom = 'Bfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf'),
+                           pageLength=6, 
+                           lengthMenu=c(3,5,10)
+                           )
+                )
+
+
+```
+
+
+## IIOE
+```{r}
+
+ctd.all %>% 
+          filter(program == "IIOE-2" & year == 2017) %>% 
+          mutate(transect = case_when(between(lat, -7.2,-7) ~ "Middle",
+                                      between(lat,-6.7,-6.5) ~ "North",
+                                      lat < -9 ~ "South")) %>% 
+    filter(transect == "South") %>% 
+      ggplot(aes(x = lon, y = pressure, z = temperature))+
+      metR::geom_contour_fill(bins = 120)+
+        metR::geom_contour2(breaks = 20)+
+      scale_y_reverse(expand = c(0,NA)) + 
+      scale_fill_gradientn(colours = hcl.colors(n = 120, palette = "Berlin", rev = FALSE), 
+                           guide = guide_colorbar(title = expression(Temperature~(degree*C)), 
+                                                  title.position = "top", 
+                                                  label.position = "top",
+                                                  title.hjust = .5,
+                                                  title.theme = element_text(angle = 0), 
+                                                  barwidth = unit(4, "cm"),
+                                                  barheight = unit(.3, "cm")))+
+      metR::scale_x_longitude(breaks = scales::breaks_pretty(n = 3))+
+      theme_bw(base_size = 12) + 
+        theme(legend.position = "top")
+  
+  
+  
+  
+  
+      
+```
+
+```{r}
+algoa = ctd.all %>% 
+    filter(program == "Algoa") %>% 
+    mutate(transect = case_when(lat > -6 ~ "North",
+                                between(lat, -8,-6) ~ "Middle",
+                                # lat > -8 & lat < -6 ~ "Middle",
+                                lat > -10 & lat < -8~ "South")) 
+
+agulhas = ctd.all %>% 
+          filter(program == "IIOE-2" & year == 2017) %>% 
+          mutate(transect = case_when(between(lat, -7.2,-7) ~ "Middle",
+                                      between(lat,-6.7,-6.5) ~ "North",
+                                      lat < -9 ~ "South")) 
+
+
+
+expeditions = algoa %>% 
+  bind_rows(agulhas)%>% 
+  pivot_longer(cols = temperature:salinity, names_to = "variable", values_to = "data")
+
+
+
+
+```
+
+
+```{r}
+ 
+expedition.program = expeditions %>% distinct(program) %>% pull()
+transects = expeditions %>% filter(!is.na(transect)) %>% distinct(transect) %>% pull()
+varCtd = expeditions %>% distinct(variable) %>% pull()
+
+
+selectInput(inputId = "expedId", label = "", choices = expedition.program, selected = expedition.program[1])
+selectInput(inputId = "transectId", label = "", choices = transects, selected = transects[1])
+selectInput(inputId = "variableId", label = "", choices = varCtd, selected = varCtd[1])
+
+j = 3
+i = 2
+
+make.contour = expeditions %>% 
+  filter(program == input$expedId,transect==input$transectId &  variable == input$variableId) %>% 
+  pull(data) %>% 
+  quantile(na.rm = TRUE) %>% 
+  unique() %>% round(2)
+
+expd.selected = expeditions %>% 
+  filter(program == input$expedId &
+         transect==input$transectId &  
+           variable == input$variableId & 
+           between(pressure,0,400)
+         ) %>% 
+  select(time,lon,lat, pressure, transect, variable, data) 
+
+```
+
+
+```{r}
+
+
+ouput$section = renderPlot({
+expd.selected %>% 
+      ggplot(aes(x = lon, y = pressure, z = data))+
+      metR::geom_contour_fill(bins = 120)+
+      metR::geom_contour2(aes(label = stat(level)), breaks = make.contour, skip = 0)+
+      scale_y_reverse(expand = c(0,NA), name = "Pressure [m]") + 
+      scale_fill_gradientn(colours = oce::oce.colorsFreesurface(120), 
+                           trans = scales::boxcox_trans(p = 0.1),
+                           guide = guide_colorbar(title = "Values", 
+                                                  reverse = TRUE, 
+                                                  breaks = scales::pretty_breaks(n = 8),
+                                                  title.position = "top", 
+                                                  label.position = "right",
+                                                  title.hjust = .5,
+                                                  title.theme = element_text(angle = 0), 
+                                                  barwidth = unit(.6, "cm"),
+                                                  barheight = unit(8, "cm")))+
+      metR::scale_x_longitude(breaks = scales::breaks_pretty(n = 3))+
+      theme_bw(base_size = 12) + 
+      theme(legend.position = "right")+
+      metR::scale_x_longitude(ticks = 0.2)+
+  labs(subtitle = paste("The",input$variableId, "section from", input$transectId,"transects sampled by", input$expedId))
+  
+})
+
+```
+
+
+```{r}
+
+ouput$table1 = renderDataTable({
+expd.selected %>% 
+  mutate(variable = str_to_title(variable),
+         date = lubridate::as_date(time),
+         hour = lubridate::hour(time), 
+         across(is.numeric, round, 4)) %>% 
+  relocate(c(variable,date, hour, transect), .before = lon) %>% 
+  select(-time, -transect) %>% 
+  filter(pressure %in% seq(0,1000,50)) %>% 
+  DT::datatable(colnames = c("Variable","Date", "Hour", "Lon", "Lat","Pressure", "Data"), 
+                rownames = NA,
+                extensions = "Buttons", 
+                options = list(paging = TRUE,
+                           scrollX=TRUE, 
+                           searching = TRUE,
+                           ordering = TRUE,
+                           dom = 'Bfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf'),
+                           pageLength=6, 
+                           lengthMenu=c(3,5,10)
+                           )
+                )
+  
+})
+
+
+```
+
+
+
+
+
+## locals
+```{r}
+require(magrittr)
+require(mgcv)
+
+local.expeditions = ctd.all %>% 
+  filter(!program %in% c("Algoa", "IIOE-2")) %>% 
+  # mutate(program = str_to_upper(program)) %>% 
+  distinct(program) %>% pull()
+
+
+require(tmap)
+tmap_mode(mode = "view")
+
+ctd.interp = ctd.all %>% 
+  pivot_longer(cols = temperature:salinity, values_to = "data", names_to = "variable") %>% 
+  filter(variable == "temperature" & program == local.expeditions[1] & pressure ==50 & season == "SE") %$%
+  akima::interp(x = lon, y = lat, z = data, nx = 100, ny = 100) %>% 
+  akima::interp2xyz()%>% 
+  as_tibble() 
+
+ctd.interp %>% 
+  raster::rasterFromXYZ(crs = 4326, digits = 2) %>% 
+  tm_shape() +
+  tm_raster(n = 6, style = "kmeans")
+
+
+ctd.interp %>% 
+  ggplot(aes(x = x, y = y, z = z))+
+  metR::geom_contour_fill(kriging = FALSE)+
+  metR::scale_x_longitude(ticks = .1)+
+  metR::scale_y_latitude(ticks = .06)
+
+
+
+```
+
+
+```{r}
+ctd.all %>% 
+  filter(program == local.expeditions[1]& pressure ==0 & season == "NE") %$%
+  gam(oxygen ~s(lon,lat, k = 3, )) %>% 
+  tidymv::predict_gam()%>% 
+  ggplot(aes(x = lon, y = lat, z = fit))+
+  metR::geom_contour_fill(kriging = FALSE)+
+  metR::scale_x_longitude(ticks = .1)+
+  metR::scale_y_latitude(ticks = .06)
+```
+## RIver discharge
+
+```{r}
+read_csv()
+
+rivers = read_csv("d:/semba/vpo/nemp/data/spatial/river_flow_master_long.csv")
+
+rivers = rivers %>% 
+  mutate(station = if_else(is.na(station), "Kibungo", station)) 
+
+rivers.station = rivers %>% 
+  distinct(station, river, lon, lat)
+
+
+waterLevel() %>% 
+      hchart(type = "spline",hcaes(x = date, y = anomaly, group = water_bodies)) %>% 
+      hc_yAxis(title = list(text = "Changes in Lake Level (m)")) %>% 
+      hc_xAxis(title = FALSE)%>%
+      hc_legend(
+        align = "top",
+        verticalAlign = "top",
+        layout = "horizontal"
+        )
+
+```
+
+```{r}
+
+rivers = read_csv("d:/semba/vpo/nemp/data/spatial/river_flow_master_long.csv") %>% 
+  mutate(station = if_else(is.na(station), "Kibungo", station)) 
+
+
+site.rivers = c("Wami", "Pangani River", "Ruvu Kibungo")
+
+
+sliderInput(inputId = "flowDate", label ="", min = lubridate::ymd("20101001"), max = lubridate::ymd("20201001"), value = c(lubridate::ymd("20101001"), lubridate::ymd("20201001")), dragRange = TRUE)
+
+radioGroupButtons(inputId = "riverId", label = "", choices = site.rivers,selected = site.rivers[1], direction = "vertical", status = "primary")
+
+river.selected = rivers %>% 
+  filter(river %in% site.rivers[3]) %>% 
+  filter(!is.na(date) & date > lubridate::ymd("20191001")) %>% 
+  # glimpse()
+  mutate(date = lubridate::as_date(date)) 
+
+river.selected = reactive({
+  rivers %>% 
+  filter(river %in% input$riverId) %>% 
+  filter(!is.na(date) & date > input$flowDate[1] & date < input$flowDate[2]) %>% 
+  # glimpse()
+  mutate(date = lubridate::as_date(date)) 
+})
+
+
+output$riverDischarge = renderPlot({
+  
+river.selected %>% 
+  ggplot(aes(x = date, y = flow))+
+  geom_line()+
+  geom_smooth(method = "lm", color = "red", fill = "red", alpha =.2)+
+  theme(axis.title.x = element_blank())+
+  scale_x_date(labels = scales::label_date_short())+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4), name = expression(Discharge~(m^{-3}~s^{-1})))
+  
+})
+```
+
+
+```{r}
+rivers %>% 
+  filter(river %in% c("Wami", "Pangani River", "Ruvu River")) %>% 
+  filter(!is.na(date)) %>% 
+  mutate(year = lubridate::year(date), month = lubridate::month(date)) %>% 
+  group_by(month, year, river) %>% 
+  summarise(flow = mean(flow, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(new.date = lubridate::make_date(year = year, month = month)) %>% 
+  arrange(new.date) %>% 
+  hchart(type = "line", hcaes(x = new.date, y = flow, group = river))
+```
+
+## water samples
+
+```{r}
+eez.bongo = st_read("d:/semba/shapefile/eez_bongo.shp", quiet = TRUE)
+africa = st_read("d:/semba/shapefile/africa.shp", quiet = TRUE)
+
+pemba.sf = africa %>%  
+  st_crop(xmin = 38, xmax = 41, ymin = -8, ymax = -2)
+```
+
+
+```{r}
+ ## define colors----
+  mycolor2 = c("#040ED8", "#2050FF", "#4196FF", "#6DC1FF", "#86D9FF", "#9CEEFF", "#AFF5FF", "#CEFFFF", "#FFFE47", "#FFEB00", "#FFC400", "#FF9000", "#FF4800", "#FF0000", "#D50000", "#9E0000")
+  mycolor = c("#7f007f", "#0000ff",  "#007fff", "#00ffff", "#00bf00", "#7fdf00",
+              "#ffff00", "#ff7f00", "#ff3f00", "#ff0000", "#bf0000")
+  odv_color = c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa") %>% rev()
+  pal = wesanderson::wes_palette("Zissou1", 21, type = "continuous")
+  mycolor3 = c("#9000B0", "#C900B0", "#C760AF", "#1190F9", "#60C8F8", "#90C9F8", "#F8F8F8", "#F8F800",  "#F8D730", "#f8b030", "#f8602f", "#f80000")
+  
+```
+
+```{r}
+insitu = readxl::read_excel("d:/semba/sapphire/data/DeepSea insitu sample.xlsx", sheet = 1) %>% select(station1 =station, lon, lat)
+  
+chl = readxl::read_excel("d:/semba/sapphire/data/water_samples.xlsx", sheet = 1)%>%
+  separate(col =  station, into = c("station", "strata"), sep = 4) %>% 
+  bind_cols(insitu)
+
+nitrate = readxl::read_excel("d:/semba/sapphire/data/water_samples.xlsx", sheet = 2)%>%
+  separate(col =  station, into = c("station", "strata"), sep = 4) %>% 
+  bind_cols(insitu)
+
+phosphate = readxl::read_excel("d:/semba/sapphire/data/water_samples.xlsx", sheet = 3)%>%
+  separate(col =  station, into = c("station", "strata"), sep = 4) %>% 
+  bind_cols(insitu)
+
+insitu.data = chl %>% 
+  bind_rows(phosphate, nitrate) %>%
+  relocate(lon, lat, station, .before = variable) %>%
+  select(-station1) %>% 
+  pivot_longer(cols = NE:SE, values_to = "data", names_to = "season")%>% 
+  mutate(strata = str_remove(string = strata,pattern = " "), variable = str_to_title(variable))
+
+insitu.data %>% 
+  write_csv("d:/semba/CTDs/OceanWebApp/data/water_samples.csv")
+```
+
+
+```{r}
+
+insitu.data = read_csv("d:/semba/CTDs/OceanWebApp/data/water_samples.csv")
+
+water.season = insitu.data %>% 
+  distinct(season) %>% pull()
+
+water.variable = insitu.data %>% 
+  distinct(variable) %>% 
+  pull()
+
+
+
+```
+
+
+```{r}
+
+ water.surface = insitu.data  %>% 
+  filter(variable == water.variable[2] & season == water.season[2] & strata == "B")  %$%
+  akima::interp(x = lon,y = lat,z = data, 
+                linear = FALSE,
+                jitter = 200, 
+                jitter.random = TRUE,
+                extrap = FALSE,
+                duplicate = "strip") %>% 
+  akima::interp2xyz() %>% 
+  as_tibble() 
+
+water.surface %>%  
+  ggplot(aes(x = x, y = y , z = z))+
+  metR::geom_contour_fill(bins = 12)+
+  metR::geom_contour2(aes(label = ..level..), skip = 1) +
+  scale_fill_gradientn(colours = mycolor2, 
+                       guide = guide_colorbar(title = expression(paste(PO[4]," ", "(\u00B5g/L)",sep=""))),
+                       trans = scales::modulus_trans(p = .1))+
+  ggspatial::layer_spatial(data = pemba.sf, fill = "#bea896", col = 1)+
+  coord_sf(xlim = c(39.0, 39.4), ylim = c(-5.45,-5.14))+
+  scale_y_continuous(breaks = c(-5.4, -5.2), labels = metR::LatLabel(c(-5.4,-5.2)))+
+  scale_x_continuous(breaks = c(39.05, 39.35), labels = metR::LonLabel(c(39.1,39.4)))+
+  theme_bw()+
+  theme(axis.title = element_blank(), legend.position = "none" )
+
+  
+water.surface %>% 
+  filter(!is.na(z)) %>% 
+  rename(Longitude = x, Latitude = y, input = z)
+  
+```
+
+
+```{r}
+aa = insitu.data  %>% 
+  filter(variable == water.variable[2] & season == water.season[2] & strata == "B")  %$%
+  akima::interp(x = lon,y = lat,z = data, 
+                linear = FALSE,
+                jitter = 200, 
+                jitter.random = TRUE,
+                extrap = FALSE,
+                duplicate = "strip") %>% 
+  akima::interp2xyz() %>% 
+  as_tibble() %>% 
+  raster::rasterFromXYZ(crs = 4326)
+
+tm_shape(shp = aa) +
+  tm_raster(palette = mycolor3, n = 120, legend.show = FALSE)
+```
+
+
+water.season = insitu.data %>% 
+  distinct(season) %>% pull()
+
+water.variable = insitu.data %>% 
+  distinct(variable) %>% 
+  pull()
+
+```{r}
+
+fluidRow(
+  column(width = 1),
+  column(width = 1,
+         helpText("Select the variable you wish to plot compute the surface and map"),
+         radioGroupButtons(inputId = "varwaterId", label = "", choices = water.variable, selected = water.variable[1], direction = "horizontal", status = "warning"),
+         helpText("select a transect. The coastal was divided into three longitudinal transects"),
+         radioGroupButtons(inputId = "waterSeasonId", label = "", choices = water.season, selected = water.season[1], direction = "horizontal", status = "success")
+                    ),
+  column(width = 3, plotOutput(outputId = "plotSuface", brush = "brushSurface")),
+  column(width = 3, plotOutput(outputId = "plotMiddle", brush = "brushMiddle")),
+  column(width = 3, plotOutput(outputId = "plotBottom", brush = "brushBottom"))
+)
+
+fluidRow(
+  column(width = 1),
+  column(width = 1),
+  column(width = 3, DT::DTOutput(outputId = "tableSurface")),
+  column(width = 3, DT::DTOutput(outputId = "tableMiddle")),
+  column(width = 3, DT::DTOutput(outputId = "tableBottom"))
+)
+
+ water.surface = reactive({
+   insitu.data  %>% 
+  filter(variable == input$varwaterId & season == input$waterSeasonId & strata == "S")  %$%
+  akima::interp(x = lon,y = lat,z = data, 
+                linear = FALSE,
+                jitter = 200, 
+                jitter.random = TRUE,
+                extrap = FALSE,
+                duplicate = "strip") %>% 
+  akima::interp2xyz() %>% 
+  as_tibble() 
+   
+ })
+
+water.middle = reactive({
+  insitu.data  %>% 
+  filter(variable == input$varwaterId & season == input$waterSeasonId & strata == "M")  %$%
+  akima::interp(x = lon,y = lat,z = data, 
+                linear = FALSE,
+                jitter = 200, 
+                jitter.random = TRUE,
+                extrap = FALSE,
+                duplicate = "strip") %>% 
+  akima::interp2xyz() %>% 
+  as_tibble() 
+})
+
+water.bottom = reactive({
+  insitu.data  %>% 
+  filter(variable == input$varwaterId & season == input$waterSeasonId & strata == "B")  %$%
+  akima::interp(x = lon,y = lat,z = data, 
+                linear = FALSE,
+                jitter = 200, 
+                jitter.random = TRUE,
+                extrap = FALSE,
+                duplicate = "strip") %>% 
+  akima::interp2xyz() %>% 
+  as_tibble() 
+})
+
+output$plotSuface = renderPlot({
+  
+water.surface() %>%  
+  ggplot(aes(x = x, y = y , z = z))+
+  metR::geom_contour_fill(bins = 12)+
+  metR::geom_contour2(aes(label = ..level..), skip = 1) +
+  scale_fill_gradientn(colours = mycolor2, 
+                       guide = guide_colorbar(title = expression(paste(PO[4]," ", "(\u00B5g/L)",sep=""))),
+                       trans = scales::modulus_trans(p = .1))+
+  ggspatial::layer_spatial(data = pemba.sf, fill = "#bea896", col = 1)+
+  coord_sf(xlim = c(39.0, 39.4), ylim = c(-5.45,-5.14))+
+  scale_y_continuous(breaks = c(-5.4, -5.2), labels = metR::LatLabel(c(-5.4,-5.2)))+
+  scale_x_continuous(breaks = c(39.05, 39.35), labels = metR::LonLabel(c(39.1,39.4)))+
+  theme_bw()+
+  theme(axis.title = element_blank(), legend.position = "none" )
+
+})
+
+output$tableSurface = renderDataTable({
+  
+water.surface() %>% 
+  filter(!is.na(z)) %>%   
+  mutate(across(is.numeric, round, 3)) %>% 
+  rename(Longitude = x, Latitude = y, input = z)%>% 
+      brushedPoints(brush = input$brushSurface) %>%
+      DT::datatable(
+        rownames = NA,
+        extensions = "Buttons", 
+        options = list(paging = TRUE,
+                       scrollX=TRUE, 
+                       searching = TRUE,
+                       ordering = TRUE,
+                       dom = 'Bfrtip',
+                       buttons = c('copy', 'csv', 'excel', 'pdf'),
+                       pageLength=5, 
+                       lengthMenu=c(3,5,10)))
+
+})
+
+output$plotMiddle = renderPlot({
+  
+water.middle() %>%  
+  ggplot(aes(x = x, y = y , z = z))+
+  metR::geom_contour_fill(bins = 12)+
+  metR::geom_contour2(aes(label = ..level..), skip = 1) +
+  scale_fill_gradientn(colours = mycolor2, 
+                       guide = guide_colorbar(title = expression(paste(PO[4]," ", "(\u00B5g/L)",sep=""))),
+                       trans = scales::modulus_trans(p = .1))+
+  ggspatial::layer_spatial(data = pemba.sf, fill = "#bea896", col = 1)+
+  coord_sf(xlim = c(39.0, 39.4), ylim = c(-5.45,-5.14))+
+  scale_y_continuous(breaks = c(-5.4, -5.2), labels = metR::LatLabel(c(-5.4,-5.2)))+
+  scale_x_continuous(breaks = c(39.05, 39.35), labels = metR::LonLabel(c(39.1,39.4)))+
+  theme_bw()+
+  theme(axis.title = element_blank(), legend.position = "none" )
+
+})
+
+output$tableMiddle = renderDataTable({
+  
+water.middle() %>% 
+  filter(!is.na(z)) %>% 
+  mutate(across(is.numeric, round, 3)) %>% 
+  rename(Longitude = x, Latitude = y, input = z)%>% 
+      brushedPoints(brush = input$brushMiddle) %>%
+      DT::datatable(
+        rownames = NA,
+        extensions = "Buttons", 
+        options = list(paging = TRUE,
+                       scrollX=TRUE, 
+                       searching = TRUE,
+                       ordering = TRUE,
+                       dom = 'Bfrtip',
+                       buttons = c('copy', 'csv', 'excel', 'pdf'),
+                       pageLength=5, 
+                       lengthMenu=c(3,5,10)))
+
+})
+
+output$plotBottom = renderPlot({
+  
+water.bottom() %>%  
+  ggplot(aes(x = x, y = y , z = z))+
+  metR::geom_contour_fill(bins = 12)+
+  metR::geom_contour2(aes(label = ..level..), skip = 1) +
+  scale_fill_gradientn(colours = mycolor2, 
+                       guide = guide_colorbar(title = expression(paste(PO[4]," ", "(\u00B5g/L)",sep=""))),
+                       trans = scales::modulus_trans(p = .1))+
+  ggspatial::layer_spatial(data = pemba.sf, fill = "#bea896", col = 1)+
+  coord_sf(xlim = c(39.0, 39.4), ylim = c(-5.45,-5.14))+
+  scale_y_continuous(breaks = c(-5.4, -5.2), labels = metR::LatLabel(c(-5.4,-5.2)))+
+  scale_x_continuous(breaks = c(39.05, 39.35), labels = metR::LonLabel(c(39.1,39.4)))+
+  theme_bw()+
+  theme(axis.title = element_blank(), legend.position = "none" )
+
+})
+
+output$tableBottom = renderDataTable({
+water.bottom %>% 
+  filter(!is.na(z)) %>% 
+  mutate(across(is.numeric, round, 3)) %>% 
+  rename(Longitude = x, Latitude = y, input = z) %>% 
+      brushedPoints(brush = input$brushBottom) %>%
+      DT::datatable(
+        rownames = NA,
+        extensions = "Buttons", 
+        options = list(paging = TRUE,
+                       scrollX=TRUE, 
+                       searching = TRUE,
+                       ordering = TRUE,
+                       dom = 'Bfrtip',
+                       buttons = c('copy', 'csv', 'excel', 'pdf'),
+                       pageLength=5, 
+                       lengthMenu=c(3,5,10)
+                       )
+        )
+})
+
+```
